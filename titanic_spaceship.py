@@ -78,18 +78,11 @@ def read_titanic():
     Y = X.pop('Transported')
     return X, Y, X_test
 ​
-def preprocess_func(X,Y):
-    categorical_cols = [cname for cname in X.columns if (X[cname].dtype == "object")]
+def preprocess_func():
     categorical_cols = ["HomePlanet","Destination"]
     binary_cols = ["VIP", "CryoSleep"]
-    numerical_cols = [cname for cname in X.columns if X[cname].dtype in ["int64","float64"]]
+    numerical_cols = ["Age", "RoomService", "FoodCourt", "ShoppingMall", "VRDeck", "Spa"]
     spent_cols = ["Spa", "VRDeck","RoomService", "ShoppingMall", "FoodCourt"]
-    ​
-    
-    ​
-    X_train, X_valid, Y_train, Y_valid = train_test_split(X, Y, 
-                                                          train_size=0.75, test_size=0.25,
-                                                          random_state=0)
     
     categorical_transformer = Pipeline(steps = [('imputer',SimpleImputer(strategy = "most_frequent")),
                                                ('onehot', OneHotEncoder())])
@@ -119,30 +112,41 @@ def preprocess_func(X,Y):
 ​
 ​    return preprocessor
 ​
-def score_model(X,Y):
-    classifier = RandomForestClassifier(n_estimators = 250,max_leaf_nodes = 1000, random_state = 0)
-    #classifier = CatBoostClassifier(verbose = 0)
-    #classifier = xgb.XGBClassifier(seed=42, gamma = 0.2, learning_rate =  0.1, max_depth =  8, min_child_weight = 1)
-    #classifier = GaussianProcessClassifier()
-    #classifier = LogisticRegression(max_iter = 400)
-    my_pipeline = Pipeline(steps = [('preprocessor', preprocessor), ('model', classifier)])
-    #my_pipeline.fit(X, Y)
-    #preds = my_pipeline.predict(X_test)
-​
-    scores = cross_val_score(my_pipeline, X, Y, cv = 5)
-    #parameters = {'model__n_estimators' : [100,250,500], 'model__max_leaf_nodes' : [500,1000,2000]}
-    ​
-    #grid = GridSearchCV(estimator = my_pipeline, param_grid = parameters)
-    #grid.fit(X,Y)
-    ​
-    #print(grid.best_params_)
-    #print(grid.best_score_)
 
+def model_pipeline():
+    classifier = RandomForestClassifier(n_estimators = 250,max_leaf_nodes = 1000, random_state = 0)
+    my_pipeline = Pipeline(steps = [('preprocessor', preprocess_func()), ('model', classifier)])
+    return my_pipeline
+    
+def score_model(X,Y):
+    my_pipeline = model_pipeline()
+    scores = cross_val_score(my_pipeline, X, Y, cv = 5)
     return scores.mean()
+
+def grid_search(X,Y):
+    classifier = RandomForestClassifier(n_estimators = 250,max_leaf_nodes = 1000, random_state = 0)
+    my_pipeline = Pipeline(steps = [('preprocessor', preprocess_func()), ('model', classifier)])
+    parameters = {'model__n_estimators' : [100,250,500], 'model__max_leaf_nodes' : [500,1000,2000]}
+    ​
+    grid = GridSearchCV(estimator = my_pipeline, param_grid = parameters)
+    grid.fit(X,Y)
+    ​
+    print(grid.best_params_)
+    print(grid.best_score_)
+    return None
+
+def titanic_submit(X,Y,X_test)
+    my_pipeline = model_pipeline()
+    my_pipeline.fit(X, Y)
+    preds = my_pipeline.predict(X_test)
+    
+    output = pd.DataFrame({'PassengerId': X_test["PassengerId"],
+                       'Transported': preds})
+    output.to_csv('submission.csv', index=False)
+    return None
 
 def main():
     X, Y, X_test = read_titanic()
-
     score = score_model(X,Y)
     print (score)
 
