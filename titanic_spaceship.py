@@ -135,7 +135,7 @@ def grid_search(X,Y):
     print(grid.best_score_)
     return None
 
-def titanic_submit(X,Y,X_test)
+def titanic_submit(X,Y,X_test):
     my_pipeline = model_pipeline()
     my_pipeline.fit(X, Y)
     preds = my_pipeline.predict(X_test)
